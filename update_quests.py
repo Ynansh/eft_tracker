@@ -7,9 +7,15 @@
 import hashlib
 import json
 import re
+import sys
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+# Старые консоли Windows (cp866) не умеют часть символов — пусть вывод их заменяет, а не падает
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(errors="replace")
 
 BASE = "https://json.tarkov.dev/"
 HERE = Path(__file__).parent

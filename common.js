@@ -254,7 +254,9 @@ function blocksHtml(blocks) {
     if (b.t === 'img') {
       if (list.length) flush();
       const caption = [b.caption, b.date && `загружено ${b.date.split('-').reverse().join('.')}`].filter(Boolean).join(' · ');
-      shots.push(`<figure class="shot"><img src="${b.file}" alt="${esc(b.caption ?? '')}" loading="lazy">
+      // В лёгком архиве скриншотов может не быть (их докачивает get_screenshots.py) — тогда прячем
+      shots.push(`<figure class="shot"><img src="${b.file}" alt="${esc(b.caption ?? '')}" loading="lazy"
+          onerror="hideMissingShot(this)">
         ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ''}</figure>`);
       continue;
     }
@@ -263,6 +265,13 @@ function blocksHtml(blocks) {
   }
   flush();
   return html;
+}
+
+// Скриншот не нашёлся — убираем его, а если галерея опустела, то и её
+function hideMissingShot(img) {
+  const gallery = img.closest('.shots');
+  img.closest('.shot')?.remove();
+  if (gallery && !gallery.children.length) gallery.remove();
 }
 
 // Прохождение карточками: новая карточка на каждом подзаголовке (задача, этап, локация),

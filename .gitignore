@@ -10,3 +10,6 @@ quests.js
 items.js
 story.js
 guides.js
+
+# Архивы для релиза (make_release.py)
+release/
