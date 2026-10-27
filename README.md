@@ -2,47 +2,116 @@
 
 Локальный трекер квестов Escape from Tarkov на русском: отметки выполнения, цепочка Каппы, сюжетные главы, предметы для квестов и убежища. Без входа и сервера — обычные HTML-страницы, прогресс хранится в браузере.
 
-## Быстрый старт
+## Быстрый старт (архив из релиза)
 
 1. Скачать архив со страницы [Releases](https://github.com/Ynansh/eft_tracker/releases/latest):
    - `eft-tracker-full-….zip` (≈ 100 МБ) — со скриншотами прохождений;
    - `eft-tracker-lite-….zip` (≈ 30 МБ) — то же без скриншотов.
-2. Распаковать и открыть `index.html` двойным кликом. Python и интернет не нужны.
-3. В лёгкой версии скриншоты можно докачать позже (нужен Python 3, около 70 МБ), потом обновить страницу. Команду запускать в распакованной папке `eft-tracker`.
-
-   Windows 10/11 — открыть папку в Проводнике, в адресной строке набрать `cmd` и нажать Enter, затем:
-
-   ```bat
-   py get_screenshots.py
-   ```
-
-   Если `py` не найден — `python get_screenshots.py`. Python ставится с [python.org](https://www.python.org/downloads/) (галочка «Add python.exe to PATH»).
-
-   macOS / Linux:
-
-   ```bash
-   python3 get_screenshots.py
-   ```
-
-   Скрипт берёт скриншоты из этого репозитория и работает, пока он публичный.
+2. Распаковать и открыть `index.html` двойным кликом (лучше в Chrome или Edge). Python и интернет не нужны.
+3. Только для lite: скриншоты можно докачать позже (около 70 МБ) — нужен [Python](#python), команда в таблице [«Команды»](#команды) — «Докачать скриншоты». После этого обновить страницу.
 
 Прогресс хранится в браузере. Если открывать сайт то из файла, то через Live Server, отметки у них будут разные — лучше пользоваться одним способом.
 
-## Запуск из исходников
+## Запуск из исходников (git clone или «Download ZIP»)
 
-1. Один раз скачать данные, иконки и фото квестов (нужен Python 3, около 30 МБ):
+В репозитории нет собранных данных, иконок и фото квестов — их скачивает скрипт.
 
-   ```bash
-   python3 update_quests.py
-   ```
+1. Установить [Python](#python).
+2. Открыть [терминал в папке проекта](#как-открыть-терминал-в-папке-трекера) и один раз выполнить «Скачать или обновить данные» из таблицы [«Команды»](#команды) (около 30 МБ).
+3. Открыть `index.html` двойным кликом или через Live Server в VS Code.
 
-2. Открыть папку в VS Code и запустить `index.html` через Live Server. Или из терминала:
+## Python
 
-   ```bash
-   python3 -m http.server 5500
-   ```
+| Как получен трекер | Нужен ли Python |
+|---|---|
+| Архив `full` из релиза | Нет |
+| Архив `lite` из релиза | Только чтобы докачать скриншоты |
+| `git clone` или «Download ZIP» | Да, чтобы скачать данные |
 
-   и открыть http://localhost:5500.
+Подойдёт Python 3.6 или новее.
+
+### Установка на Windows 10/11
+
+Выбери любой способ. **После установки закрой терминал и открой заново**, иначе он не увидит Python.
+
+**С сайта python.org.** Скачать установщик на https://www.python.org/downloads/, на первом экране отметить галочку **«Add python.exe to PATH»** и нажать «Install Now». Команды: `py` и `python`.
+
+**Через winget** (встроен в Windows 10/11), в PowerShell или cmd:
+
+```powershell
+winget install -e --id Python.Python.3.13
+```
+
+Команда: `py`.
+
+**Через Microsoft Store.** Найти в магазине «Python 3.13» и нажать «Получить». Команда: `python` (команды `py` нет).
+
+**Через Scoop:**
+
+```powershell
+scoop install python
+```
+
+Команда: `python`.
+
+**Через Chocolatey** (PowerShell от имени администратора):
+
+```powershell
+choco install python -y
+```
+
+Команда: `python`.
+
+Проверить, что всё работает (одна из команд должна вывести версию):
+
+```powershell
+py --version
+```
+
+```powershell
+python --version
+```
+
+### Установка на macOS и Linux
+
+- **macOS:** установщик с https://www.python.org/downloads/ или `brew install python`. Команда: `python3`.
+- **Ubuntu/Debian:** `sudo apt install python3`. **Fedora:** `sudo dnf install python3`. Команда: `python3`.
+
+### Как открыть терминал в папке трекера
+
+Команды нужно запускать **внутри папки трекера** (распакованной `eft-tracker` или папки репозитория).
+
+- **Windows 11:** правый клик по пустому месту в папке → «Открыть в терминале».
+- **Windows 10:** Shift + правый клик по пустому месту в папке → «Открыть окно PowerShell здесь».
+- **Любая Windows:** в адресной строке Проводника набрать `powershell` или `cmd` и нажать Enter.
+- **Вручную** (PowerShell и cmd), путь заменить на свой:
+
+  ```powershell
+  cd "C:\Users\Имя\Downloads\eft-tracker"
+  ```
+
+- **macOS:** правый клик по папке в Finder → «Службы» → «Новый терминал по адресу папки», или `cd ~/Downloads/eft-tracker`.
+
+### Команды
+
+Команды одинаковые для PowerShell и cmd. Колонка зависит от того, как установлен Python.
+
+| Что сделать | Windows: python.org, winget | Windows: Store, Scoop, Chocolatey | macOS / Linux |
+|---|---|---|---|
+| Докачать скриншоты (lite) | `py get_screenshots.py` | `python get_screenshots.py` | `python3 get_screenshots.py` |
+| Скачать или обновить данные | `py update_quests.py` | `python update_quests.py` | `python3 update_quests.py` |
+| Локальный сервер (по желанию), затем открыть http://localhost:5500 | `py -m http.server 5500` | `python -m http.server 5500` | `python3 -m http.server 5500` |
+| Собрать архивы релиза | `py make_release.py` | `python make_release.py` | `python3 make_release.py` |
+
+Если Python ставили с python.org с галочкой «Add python.exe to PATH», работают обе команды — и `py`, и `python`.
+
+### Частые ошибки
+
+- **`py : The term 'py' is not recognized…`** (PowerShell) или **`"py" не является внутренней или внешней командой…`** (cmd) — Python не установлен или поставлен без команды `py` (Store, Scoop, Chocolatey). Установи Python или используй `python`. После установки перезапусти терминал.
+- **`python` открывает Microsoft Store или пишет `Python was not found`** — Python не установлен, это заглушка Windows. Установи Python любым способом выше. Заглушку можно отключить: «Параметры» → «Приложения» → «Дополнительные параметры приложений» → «Псевдонимы выполнения приложений».
+- **`can't open file '…get_screenshots.py': No such file or directory`** — терминал открыт не в той папке. Перейди в папку трекера (см. выше).
+- **macOS: `CERTIFICATE_VERIFY_FAILED`** — запусти «Install Certificates.command» из папки «Программы» → «Python 3.x».
+- **`get_screenshots.py`: «Не получилось скачать (404)»** — репозиторий стал приватным. Скачай архив `full` со страницы релизов.
 
 ## Что есть
 
@@ -57,13 +126,11 @@
 
 ## Обновление данных
 
-```bash
-python3 update_quests.py
-```
+`update_quests.py` скачивает свежие данные tarkov.dev, недостающие иконки и фото квестов и пересобирает `quests.js`, `items.js`, `story.js`, `guides.js`. Эти файлы и картинки (кроме `img/wiki/`) в репозитории не хранятся — их создаёт скрипт, поэтому его нужно запустить перед первым запуском и повторять после патчей игры.
 
-Архивы для релиза собирает `python3 make_release.py` (в папку `release/`, после обновления данных).
+Прохождения, сюжет, сезонные квесты и скриншоты с вики (`wiki_*.json`, `img/wiki/`) собираются вручную через браузер: вики закрыта проверкой Cloudflare.
 
-`update_quests.py` скачивает свежие данные tarkov.dev, недостающие иконки и фото квестов и пересобирает `quests.js`, `items.js`, `story.js`, `guides.js`. Эти файлы и картинки (кроме `img/wiki/`) в репозитории не хранятся — их создаёт скрипт, поэтому его нужно запустить перед первым запуском и повторять после патчей игры. Прохождения, сюжет, сезонные квесты и скриншоты с вики (`wiki_*.json`, `img/wiki/`) собираются вручную через браузер: вики закрыта проверкой Cloudflare.
+Архивы для релиза собирает `make_release.py` в папку `release/` — после обновления данных.
 
 ## Источники и лицензии
 
