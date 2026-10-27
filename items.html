@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Предметы Таркова</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="items-page">
+  <header class="top">
+    <h1>Предметы</h1>
+    <a class="nav" href="index.html">← Квесты</a>
+    <input id="search" type="search" placeholder="Поиск по предметам…" autocomplete="off">
+    <div class="seg mode" role="group" aria-label="Режим игры">
+      <button type="button" data-mode="pvp">PvP</button>
+      <button type="button" data-mode="pve">PvE</button>
+      <button type="button" data-mode="season">Сезон</button>
+    </div>
+    <div class="seg faction" role="group" aria-label="Фракция">
+      <button type="button" data-faction="USEC">USEC</button>
+      <button type="button" data-faction="BEAR">BEAR</button>
+    </div>
+    <div id="progress" class="progress"></div>
+    <button id="reset" type="button" class="reset">Сброс</button>
+  </header>
+
+  <nav class="tabs">
+    <div class="seg kind" role="group" aria-label="Для чего предметы">
+      <button type="button" data-kind="quests">Для квестов</button>
+      <button type="button" data-kind="hideout">Для убежища</button>
+    </div>
+    <div class="seg focus" role="group" aria-label="Фильтр Каппы">
+      <button type="button" data-kappa="0">Все квесты</button>
+      <button type="button" data-kappa="1">Только Каппа</button>
+    </div>
+  </nav>
+
+  <main>
+    <details id="stations" class="stations" open>
+      <summary>Уровни убежища: отметь построенные</summary>
+      <div id="stationList" class="station-list"></div>
+    </details>
+    <ul id="items" class="items"></ul>
+  </main>
+
+  <script src="quests.js"></script>
+  <script src="items.js"></script>
+  <script src="common.js"></script>
+  <script src="items-page.js"></script>
+</body>
+</html>
