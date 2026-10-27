@@ -1,7 +1,7 @@
 # Собирает два архива для релиза на GitHub в папку release/:
-#   eft-tracker-full-<дата>.zip — всё готовое к запуску, со скриншотами вики
-#   eft-tracker-lite-<дата>.zip — то же без скриншотов вики (легче в 3 раза);
-#     скриншоты потом можно докачать: python3 get_screenshots.py
+#   eft-tracker-full-<дата>.zip — всё готовое к запуску, со скриншотами вики и tarkov.help
+#   eft-tracker-lite-<дата>.zip — то же без скриншотов (img/wiki и img/th);
+#     скриншоты потом можно докачать: python3 get_screenshots.py и python3 get_th_screenshots.py
 # Перед сборкой обнови данные: python3 update_quests.py
 # Запуск: python3 make_release.py
 import datetime
@@ -51,5 +51,6 @@ stamp = datetime.date.today().isoformat()
 files = list(project_files())
 
 build(f"eft-tracker-full-{stamp}.zip", files)
-# Лёгкий: без папки img/wiki. Ссылки на скриншоты остаются — сайт прячет отсутствующие
-build(f"eft-tracker-lite-{stamp}.zip", [r for r in files if r.parts[:2] != ("img", "wiki")])
+# Лёгкий: без папок img/wiki и img/th. Ссылки на скриншоты остаются: скриншоты tarkov.help страница
+# возьмёт с сайта, а отсутствующие скриншоты вики спрячет
+build(f"eft-tracker-lite-{stamp}.zip", [r for r in files if r.parts[:2] not in (("img", "wiki"), ("img", "th"))])

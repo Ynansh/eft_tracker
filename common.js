@@ -7,6 +7,7 @@ const traderName = Object.fromEntries(TRADERS.map(t => [t.id, t.name]));
 const byId = Object.fromEntries(QUESTS.map(x => [x.id, x]));
 const chapterById = Object.fromEntries(STORY.map(c => [c.id, c]));
 const stepChapter = Object.fromEntries(STORY.flatMap(c => c.steps.filter(s => s.id).map(s => [s.id, c.id])));
+const stepById = Object.fromEntries(STORY.flatMap(c => c.steps.filter(s => s.id).map(s => [s.id, s])));
 
 // Сохранение в браузере (localStorage)
 function load(key, fallback) {
@@ -17,6 +18,8 @@ function save(key, value) {
 }
 
 const $ = id => document.getElementById(id);
+// Выход EFT 1.0: правки вики и скриншоты до этой даты могут быть устаревшими
+const RELEASE_1_0 = '2025-11-15';
 const norm = s => s.toLowerCase().replace(/ё/g, 'е');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
@@ -63,6 +66,9 @@ function effectiveReqs(id) {
   return [...out];
 }
 
+// Группы «любой из»: нужен хотя бы один квест группы. Квесты не своего режима и фракции отбрасываем
+const anyGroups = id => (byId[id].requiresAny ?? []).map(g => g.filter(r => exists(byId[r]))).filter(g => g.length);
+
 // Цепочка Каппы: квесты из списка Каппы и все квесты, которые к ним ведут.
 // Зависит от режима и фракции, поэтому пересчитывается при их смене
 function buildChain() {
@@ -75,8 +81,10 @@ function buildChain() {
     kappa.add(id);
     stack.push(...reqs.get(id));
   }
-  // Квесты, которые блокируются по предыдущим: цепочка Каппы и сезонная цепочка
+  // Квесты, которые блокируются по предыдущим: цепочка Каппы и сезонная цепочка.
+  // Группы «любой из» в цепочку Каппы не добавляем: ни один квест группы сам по себе не обязателен
   const gated = new Set([...kappa, ...QUESTS.filter(x => exists(x) && seasonChain(x)).map(x => x.id)]);
+  const any = new Map([...gated].map(id => [id, anyGroups(id)]));
   const dependents = new Map();
   for (const id of gated) {
     for (const r of reqs.get(id)) {
@@ -84,7 +92,7 @@ function buildChain() {
       dependents.get(r).push(id);
     }
   }
-  return { reqs, kappa, gated, dependents };
+  return { reqs, any, kappa, gated, dependents };
 }
 
 // Квесты, которые есть только в сезоне, — цепочка KORD BREACH
@@ -115,6 +123,11 @@ function profileMissing(x) {
   const unlock = TRADER_UNLOCKS[x.trader];
   if (unlock && !stepDone(unlock.step)) out.push(`Тур: «${unlock.text}»`);
   for (const c of x.storyReqs ?? []) if (!chapterDone(c)) out.push(`глава «${chapterById[c]?.name ?? c}»`);
+  // Шаг сюжета: подойдёт любой из вариантов шага
+  const steps = (x.storySteps ?? []).filter(id => stepById[id]);
+  if (steps.length && !steps.some(stepDone)) {
+    out.push(`${chapterById[stepChapter[steps[0]]].name}: «${stepById[steps[0]].text}»`);
+  }
   if (x.level > profile.level) out.push(`ур. ${x.level}`);
   for (const r of x.traderReqs) {
     if (r.type === 'level') {
@@ -128,8 +141,13 @@ function profileMissing(x) {
 
 // Невыполненные предыдущие квесты; по ним блокируются цепочка Каппы и сезонная цепочка
 const missingReqs = x => chain.gated.has(x.id) ? chain.reqs.get(x.id).filter(r => !done.has(r)) : [];
+// Группы «любой из», в которых ещё ничего не выполнено
+const missingAny = x => chain.gated.has(x.id) ? chain.any.get(x.id).filter(g => !g.some(r => done.has(r))) : [];
+// Квесты группы без повторов названия: варианты одного квеста в разных ветках называются одинаково
+const uniqueByName = g => [...new Map(g.map(id => [byId[id].name, id])).values()];
 
-const isLocked = x => !done.has(x.id) && (missingReqs(x).length > 0 || profileMissing(x).length > 0);
+const isLocked = x => !done.has(x.id) &&
+  (missingReqs(x).length > 0 || missingAny(x).length > 0 || profileMissing(x).length > 0);
 
 // Снять отметку. Квесты Каппы, которые держатся на этом квесте, тоже теряют отметку
 function uncheck(id) {
@@ -253,10 +271,13 @@ function blocksHtml(blocks) {
     if (b.t === 'li') { if (shots.length) flush(); list.push(`<li>${esc(b.text)}</li>`); continue; }
     if (b.t === 'img') {
       if (list.length) flush();
-      const caption = [b.caption, b.date && `загружено ${b.date.split('-').reverse().join('.')}`].filter(Boolean).join(' · ');
-      // В лёгком архиве скриншотов может не быть (их докачивает get_screenshots.py) — тогда прячем
-      shots.push(`<figure class="shot"><img src="${b.file}" alt="${esc(b.caption ?? '')}" loading="lazy"
-          onerror="hideMissingShot(this)">
+      const date = b.date && `загружено ${b.date.split('-').reverse().join('.')}${b.date < RELEASE_1_0 ? ' (до 1.0)' : ''}`;
+      const caption = [b.caption, date, b.source && `скриншот: ${b.source}`].filter(Boolean).join(' · ');
+      // Скриншот берётся из папки (file), а если его там нет — с сайта источника (url).
+      // В лёгком архиве скриншотов может не быть (их докачивают скрипты) — тогда прячем
+      shots.push(`<figure class="shot"><img src="${esc(encodeURI(b.file ?? b.url))}" alt="${esc(b.caption ?? '')}"
+          ${b.file && b.url ? `data-remote="${esc(encodeURI(b.url))}"` : ''} loading="lazy"
+          referrerpolicy="no-referrer" onerror="shotFallback(this)">
         ${caption ? `<figcaption>${esc(caption)}</figcaption>` : ''}</figure>`);
       continue;
     }
@@ -275,11 +296,19 @@ function imgMissing(img, text) {
   img.replaceWith(box);
 }
 
-// Скриншот не нашёлся — убираем его, а если галерея опустела, то и её
+// Скриншота нет в папке — пробуем взять его с сайта источника, а если и там нет — убираем
+function shotFallback(img) {
+  const remote = img.dataset.remote;
+  if (!remote) return hideMissingShot(img);
+  delete img.dataset.remote;
+  img.src = remote;
+}
+
+// Скриншот не нашёлся — убираем его, а если галерея опустела, то и её (вместе с заголовком блока)
 function hideMissingShot(img) {
   const gallery = img.closest('.shots');
   img.closest('.shot')?.remove();
-  if (gallery && !gallery.children.length) gallery.remove();
+  if (gallery && !gallery.children.length) (gallery.closest('.shots-block') ?? gallery).remove();
 }
 
 // Прохождение карточками: новая карточка на каждом подзаголовке (задача, этап, локация),

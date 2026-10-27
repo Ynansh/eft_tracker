@@ -9,7 +9,7 @@ Object.assign(state, {
 
 const STORY_TAB = 'story'; // вкладка «Сюжет» рядом с торговцами
 
-// Квест с eft.su в сезоне: неизвестно, есть ли он там
+// Квест не с tarkov.dev (eft.su, tarkov-market) в сезоне: неизвестно, есть ли он там
 const maybeSeason = x => state.mode === 'season' && !x.modes.includes('season');
 
 const inScope = x => exists(x) && (!state.kappaOnly || chain.kappa.has(x.id));
@@ -32,18 +32,22 @@ function renderProfile() {
 function questHtml(x, showTrader) {
   const isDone = done.has(x.id);
   const missing = isDone ? [] : missingReqs(x);
+  const anyMissing = isDone ? [] : missingAny(x);
   const needed = isDone ? [] : profileMissing(x);
-  const locked = missing.length > 0 || needed.length > 0;
+  const locked = missing.length > 0 || anyMissing.length > 0 || needed.length > 0;
+  const first = [...missing.map(id => esc(byId[id].name)),
+    ...anyMissing.map(g => uniqueByName(g).map(id => esc(byId[id].name)).join(' или '))];
   const meta = [
     showTrader && `<span class="tag trader">${esc(traderName[x.trader])}</span>`,
     `<span>ур. ${x.level}</span>`,
     x.map && `<span>${esc(x.map)}</span>`,
     chain.kappa.has(x.id) && `<span class="tag kappa">Каппа</span>`,
     x.faction && `<span class="tag">${x.faction}</span>`,
+    x.notOnTM && '<span class="tag stale" title="Квеста нет на tarkov-market: возможно, он устарел или убран из игры">нет на tarkov-market</span>',
   ].filter(Boolean).join('');
   const lockedBy = [
     needed.length && `<div class="locked-by">🔒 Нужно: ${esc(needed.join(', '))}</div>`,
-    missing.length && `<div class="locked-by">🔒 Сначала: ${missing.map(id => esc(byId[id].name)).join(', ')}</div>`,
+    first.length && `<div class="locked-by">🔒 Сначала: ${first.join(', ')}</div>`,
   ].filter(Boolean).join('');
   const thumb = x.image
     ? `<img class="thumb" src="${x.image}" alt="" loading="lazy" onerror="imgMissing(this)">`
@@ -127,7 +131,7 @@ function render() {
     $('groups').innerHTML = todo.length
       ? [available.length && groupHtml('open', 'Доступные', available, searching),
          locked.length && groupHtml('locked', 'Заблокированные', locked, searching),
-         maybe.length && groupHtml('maybe', 'Возможно, есть в сезоне (с eft.su)', maybe, searching)].filter(Boolean).join('')
+         maybe.length && groupHtml('maybe', 'Возможно, есть в сезоне', maybe, searching)].filter(Boolean).join('')
       : `<p class="empty">${items.length ? 'Всё выполнено 👍' : 'Ничего не найдено'}</p>`;
   }
   $('done').hidden = storyTab;

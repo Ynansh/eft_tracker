@@ -140,6 +140,7 @@ main { padding: 12px 20px; max-width: 1100px; }
 .tag { padding: 1px 7px; border-radius: 6px; border: 1px solid var(--line); font-size: 12px; }
 .tag.kappa { color: var(--kappa); border-color: var(--kappa); }
 .tag.trader { color: var(--accent); }
+.tag.stale { color: var(--muted); border-style: dashed; }
 
 /* Заблокированный квест цепочки Каппы */
 .quest.locked { opacity: .55; }
@@ -354,6 +355,11 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 
 /* ===== Прохождение карточками ===== */
 .guide-cards { display: grid; gap: 12px; }
+/* Старое прохождение с вики — свёрнуто под своим */
+.old-guide { margin-top: 18px; border: 1px dashed var(--line); border-radius: 10px; padding: 8px 12px; }
+.old-guide > summary { cursor: pointer; color: var(--muted); }
+.old-guide[open] > summary { margin-bottom: 10px; }
+.quest-detail h3.sub { margin-top: 20px; }
 .guide-card {
   background: var(--row);
   border: 1px solid var(--line);

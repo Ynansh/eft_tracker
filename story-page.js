@@ -1,5 +1,4 @@
 // Страница сюжетной главы. Общая логика — в common.js
-const RELEASE_1_0 = '2025-11-15';
 const WIKI = 'https://escapefromtarkov.fandom.com/ru/wiki/';
 
 const chapter = chapterById[new URLSearchParams(location.search).get('id')];
