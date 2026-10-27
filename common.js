@@ -267,6 +267,14 @@ function blocksHtml(blocks) {
   return html;
 }
 
+// Картинка не скачалась (сервер картинок был недоступен) — вместо битой иконки пустое место или «?»
+function imgMissing(img, text) {
+  const box = document.createElement('div');
+  box.className = text ? 'no-icon' : img.className;
+  if (text) box.textContent = text;
+  img.replaceWith(box);
+}
+
 // Скриншот не нашёлся — убираем его, а если галерея опустела, то и её
 function hideMissingShot(img) {
   const gallery = img.closest('.shots');

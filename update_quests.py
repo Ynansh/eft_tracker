@@ -8,9 +8,14 @@ import hashlib
 import json
 import re
 import sys
+import threading
+import urllib.error
+import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+
+from progress_bar import Progress
 
 # Старые консоли Windows (cp866) не умеют часть символов — пусть вывод их заменяет, а не падает
 for _stream in (sys.stdout, sys.stderr):
@@ -44,23 +49,46 @@ TRADER_ORDER = [
 ]
 
 
-def load(mode, name):
+def load(mode, name, bar):
     req = urllib.request.Request(f"{BASE}{mode}/{name}", headers={"User-Agent": "eft-quests"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        return json.load(r)["data"]
+    try:
+        chunks = []
+        with urllib.request.urlopen(req, timeout=60) as r:
+            while True:
+                chunk = r.read(1 << 18)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                bar.advance(0, len(chunk))
+        bar.advance(1)
+        return json.loads(b"".join(chunks))["data"]
+    except (urllib.error.URLError, OSError) as e:
+        print()
+        sys.exit(f"Не удалось скачать данные с json.tarkov.dev ({e}). Проверь интернет или попробуй через VPN. "
+                 f"Готовый трекер без Python — архив со страницы релизов.")
 
 
 # Режимы сайта и соответствующие режимы tarkov.dev
 MODES = {"pvp": "regular", "pve": "pve", "season": "pvp-season"}
 
-tasks_by_mode = {m: load(src, "tasks")["tasks"] for m, src in MODES.items()}
-ru = {k: v for src in ("pvp-season", "pve", "regular") for k, v in load(src, "tasks_ru").items()}
-traders_ru = load("regular", "traders_ru")
-maps_ru = load("regular", "maps_ru")
-items = load("regular", "items")["items"]
-items_ru = load("regular", "items_ru")
-hideout_by_mode = {m: load(src, "hideout") for m, src in MODES.items()}
-hideout_ru = load("regular", "hideout_ru")
+# Все файлы данных, которые нужны с tarkov.dev
+SOURCES = [(src, "tasks") for src in MODES.values()] + [(src, "tasks_ru") for src in MODES.values()]
+SOURCES += [("regular", "traders_ru"), ("regular", "maps_ru"), ("regular", "items"), ("regular", "items_ru")]
+SOURCES += [(src, "hideout") for src in MODES.values()] + [("regular", "hideout_ru")]
+
+print("Обновление трекера: данные tarkov.dev, фото квестов и иконки предметов.")
+bar = Progress("Данные tarkov.dev", len(SOURCES), step="1/3")
+data = {(src, name): load(src, name, bar) for src, name in SOURCES}
+bar.finish()
+
+tasks_by_mode = {m: data[src, "tasks"]["tasks"] for m, src in MODES.items()}
+ru = {k: v for src in ("pvp-season", "pve", "regular") for k, v in data[src, "tasks_ru"].items()}
+traders_ru = data["regular", "traders_ru"]
+maps_ru = data["regular", "maps_ru"]
+items = data["regular", "items"]["items"]
+items_ru = data["regular", "items_ru"]
+hideout_by_mode = {m: data[src, "hideout"] for m, src in MODES.items()}
+hideout_ru = data["regular", "hideout_ru"]
 trader_by_name = {traders_ru.get(f"{i} Nickname"): i for i in TRADER_ORDER}
 
 
@@ -266,24 +294,64 @@ for r in json.loads((HERE / "eftsu_previous.json").read_text(encoding="utf-8")):
 quests.sort(key=lambda q: (q["level"], q["name"]))
 
 
-def fetch_file(url, path):
-    """Скачивает файл, если его ещё нет. Возвращает 1, если скачан новый."""
-    if path.exists():
-        return 0
-    req = urllib.request.Request(url, headers={"User-Agent": "eft-quests"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        path.write_bytes(r.read())
-    return 1
+# Картинки, которые не скачались, и серверы, которые перестали отвечать
+failed_downloads = []
+down_hosts = set()
+fail_streak = {}
+fail_lock = threading.Lock()
+
+
+def download_file(url, path):
+    """Скачивает файл. Возвращает размер или 0, если не вышло.
+    Ошибка сети не прерывает скрипт: файл пропускается, сайт работает и без него."""
+    host = urllib.parse.urlsplit(url).hostname
+    if host not in down_hosts:
+        for _ in range(2):
+            try:
+                req = urllib.request.Request(url, headers={"User-Agent": "eft-quests"})
+                with urllib.request.urlopen(req, timeout=20) as r:
+                    data = r.read()
+                # Сначала во временный файл: оборванная загрузка не оставит битую картинку
+                part = path.with_name(path.name + ".part")
+                part.write_bytes(data)
+                part.replace(path)
+                with fail_lock:
+                    fail_streak[host] = 0
+                return len(data)
+            except (urllib.error.URLError, OSError):
+                pass
+    with fail_lock:
+        failed_downloads.append(url)
+        fail_streak[host] = fail_streak.get(host, 0) + 1
+        # Много неудач подряд — сервер недоступен, дальше не ждём на каждой картинке
+        if fail_streak[host] >= 8:
+            down_hosts.add(host)
+    return 0
+
+
+def fetch_all(title, step, jobs):
+    """Скачивает недостающие файлы (url, путь) с полоской прогресса. Возвращает число новых."""
+    bar = Progress(title, len(jobs), step=step)
+
+    def one(job):
+        url, path = job
+        size = 0 if path.exists() else download_file(url, path)
+        bar.advance(1, size)
+        return 1 if size else 0
+
+    failed_before = len(failed_downloads)
+    with ThreadPoolExecutor(8) as pool:
+        fresh = sum(pool.map(one, jobs))
+    failed = len(failed_downloads) - failed_before
+    bar.finish(f"  (новых {fresh}" + (f", не скачано {failed})" if failed else ")"))
+    return fresh
 
 
 # Картинки квестов
 (IMG / "quests").mkdir(parents=True, exist_ok=True)
-with ThreadPoolExecutor(8) as pool:
-    fresh_quests = sum(pool.map(lambda q: fetch_file(q["imageUrl"], HERE / q["image"]),
-                                [q for q in quests if q["image"]]))
+fetch_all("Фото квестов", "2/3", [(q["imageUrl"], HERE / q["image"]) for q in quests if q["image"]])
 for q in quests:
     del q["imageUrl"]
-print(f"Картинок квестов скачано: {fresh_quests}")
 
 trader_ids = {q["trader"] for q in quests}
 order = [i for i in TRADER_ORDER if i in trader_ids] + sorted(trader_ids - set(TRADER_ORDER))
@@ -336,9 +404,8 @@ for i in sorted(used):
         "icon": f"img/{i}.webp" if i in with_icon and it.get("iconLink") else None,
     }
 
-with ThreadPoolExecutor(8) as pool:
-    fresh = sum(pool.map(lambda i: fetch_file(items[i]["iconLink"], IMG / f"{i}.webp"),
-                         [i for i, v in item_info.items() if v["icon"]]))
+fetch_all("Иконки предметов", "3/3",
+          [(items[i]["iconLink"], IMG / f"{i}.webp") for i, v in item_info.items() if v["icon"]])
 
 (HERE / "items.js").write_text(
     "// Сгенерировано update_quests.py из данных tarkov.dev. Не редактировать вручную.\n"
@@ -346,7 +413,7 @@ with ThreadPoolExecutor(8) as pool:
     f"window.HIDEOUT = {json.dumps(stations_by_mode, ensure_ascii=False, separators=(',', ':'))};\n",
     encoding="utf-8",
 )
-print(f"Предметы: {len(item_info)}, модулей убежища: {len(stations_by_mode['pvp'])}, новых иконок скачано: {fresh}")
+print(f"Предметы: {len(item_info)}, модулей убежища: {len(stations_by_mode['pvp'])}")
 
 # Сюжетные главы. Связи между главами, которых нет на русской вики, — из tarkov-data-overlay
 CHAPTER_REQS = {"Небеса в огне": ["Тур"], "Билет": ["Небеса в огне"]}
@@ -418,3 +485,8 @@ if guides_path.exists():
     print(f"Прохождений с вики: {sum(1 for g in guides.values() if g.get('walkthrough'))}")
 if missing_shots:
     print(f"Скриншотов нет в папке img/wiki (пропущены): {len(missing_shots)}")
+if failed_downloads:
+    hosts = sorted({urllib.parse.urlsplit(u).hostname for u in failed_downloads})
+    print(f"\nНе скачано картинок: {len(failed_downloads)} — не отвечает {', '.join(hosts)}.\n"
+          f"Трекер работает и без них (вместо картинок будут пустые места). Запусти скрипт ещё раз позже "
+          f"или через VPN — докачаются только недостающие. Либо возьми готовый архив со страницы релизов.")

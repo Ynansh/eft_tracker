@@ -59,7 +59,7 @@ function cardHtml(e) {
   const complete = have >= e.total;
   const first = ITEMS[e.items[0]];
   const icon = first?.icon
-    ? `<img src="${first.icon}" alt="" loading="lazy">`
+    ? `<img src="${first.icon}" alt="" loading="lazy" onerror="imgMissing(this, '?')">`
     : '<div class="no-icon">?</div>';
   const title = e.text ?? itemName(e.items[0]);
   const anyOf = e.items.length > 1

@@ -46,7 +46,7 @@ function questHtml(x, showTrader) {
     missing.length && `<div class="locked-by">🔒 Сначала: ${missing.map(id => esc(byId[id].name)).join(', ')}</div>`,
   ].filter(Boolean).join('');
   const thumb = x.image
-    ? `<img class="thumb" src="${x.image}" alt="" loading="lazy">`
+    ? `<img class="thumb" src="${x.image}" alt="" loading="lazy" onerror="imgMissing(this)">`
     : '<div class="thumb"></div>';
   const title = locked ? 'Квест пока недоступен' : isDone ? 'Вернуть в список' : 'Выполнено';
   return `<li class="quest${locked ? ' locked' : ''}" data-id="${x.id}">

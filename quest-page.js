@@ -6,7 +6,7 @@ const WIKI = 'https://escapefromtarkov.fandom.com/ru/wiki/';
 
 const quest = byId[new URLSearchParams(location.search).get('id')];
 
-const icon = id => ITEMS[id]?.icon ? `<img src="${ITEMS[id].icon}" alt="" loading="lazy">` : '';
+const icon = id => ITEMS[id]?.icon ? `<img src="${ITEMS[id].icon}" alt="" loading="lazy" onerror="imgMissing(this)">` : '';
 const itemName = id => ITEMS[id]?.name ?? id;
 const questLink = id => `<a href="quest.html?id=${id}">${esc(byId[id].name)}</a>`;
 const dateRu = iso => iso.slice(0, 10).split('-').reverse().join('.');
@@ -84,7 +84,7 @@ function render() {
   $('quest').innerHTML = `
     <h1>${esc(quest.name)}</h1>
     <div class="meta">${tags}</div>
-    ${quest.image ? `<img class="quest-image" src="${quest.image}" alt="">` : ''}
+    ${quest.image ? `<img class="quest-image" src="${quest.image}" alt="" onerror="this.remove()">` : ''}
     ${status}
     ${section('Цели', objectives)}
     ${section('Нужные предметы', needs)}
