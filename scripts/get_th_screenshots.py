@@ -1,5 +1,5 @@
-# Скачивает скриншоты прохождений с tarkov.help в папку img/th, чтобы страница квеста
-# показывала их без интернета и не зависела от сайта. Список картинок — tarkov_help.json.
+# Скачивает скриншоты прохождений и обложки глав сюжета с tarkov.help в папку img/th, чтобы страницы
+# показывали их без интернета и не зависели от сайта. Список картинок — sources/tarkov_help.json и sources/story_covers.json.
 # Уже скачанные пропускаются, поэтому скрипт можно запускать повторно. Запуск из папки трекера: python3 scripts/get_th_screenshots.py
 import json
 import sys
@@ -32,7 +32,12 @@ def local_name(url):
 
 def main():
     data = json.loads((ROOT / "sources" / "tarkov_help.json").read_text(encoding="utf-8"))
-    urls = sorted({u for q in data["quests"].values() for u in q["images"] if SHOTS in u})
+    urls = {u for q in data["quests"].values() for u in q["images"] if SHOTS in u}
+    # Обложки сюжетных глав
+    covers = ROOT / "sources" / "story_covers.json"
+    if covers.exists():
+        urls |= {c["image"] for c in json.loads(covers.read_text(encoding="utf-8"))["chapters"].values()}
+    urls = sorted(urls)
     DEST.mkdir(parents=True, exist_ok=True)
     todo = [u for u in urls if not (DEST / local_name(u)).exists()]
     print(f"Скриншоты tarkov.help: всего {len(urls)}, уже скачано {len(urls) - len(todo)}, осталось {len(todo)}.")

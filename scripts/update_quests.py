@@ -303,6 +303,18 @@ for order, s in enumerate(wiki_ss["story"], 1):
         **{k: s[k] for k in ("important", "walkthrough", "notes") if s.get(k)},
     })
 
+# Обложки глав с tarkov.help (sources/story_covers.json). Страница берёт их из img/th, а если файла нет — с сайта
+covers_path = SRC / "story_covers.json"
+if covers_path.exists():
+    covers = {k.lower().replace("ё", "е"): v for k, v in
+              json.loads(covers_path.read_text(encoding="utf-8"))["chapters"].items()}
+    for c in story:
+        cover = covers.get(c["name"].lower().replace("ё", "е"))
+        if cover:
+            c["cover"], c["th"] = cover["image"], cover["slug"]
+        else:
+            print(f"Внимание: нет обложки для главы «{c['name']}»")
+
 tour = next(c for c in story if c["name"] == "Тур")
 trader_unlocks = {}
 for trader, prefix in TOUR_UNLOCKS.items():
