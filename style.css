@@ -283,6 +283,7 @@ body.done-open { padding-bottom: calc(45vh + 64px); }
 .item-tags { margin: 4px 0; }
 .tag.fir { color: #e8a25a; border-color: #e8a25a; }
 .uses { margin: 0; padding-left: 16px; color: var(--muted); font-size: 13px; }
+.uses li.handed { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--muted) 60%, transparent); }
 .tabs .seg button { border: 0; border-radius: 0; background: transparent; }
 .tabs .seg button.on { background: var(--row-hover); }
 

@@ -16,19 +16,22 @@ let built = new Set(load(BUILT_KEY(state.mode), []));
 
 const itemName = id => ITEMS[id]?.name ?? id;
 
-// Предметы для невыполненных квестов, сведённые по предмету и «найдено в рейде»
+// Предметы для квестов, сведённые по предмету и «найдено в рейде».
+// Предметы выполненных квестов уже сданы — они считаются собранными (auto)
 function questEntries() {
   const map = new Map();
   for (const x of QUESTS) {
-    if (!exists(x) || done.has(x.id) || (state.kappaOnly && !chain.kappa.has(x.id))) continue;
+    if (!exists(x) || (state.kappaOnly && !chain.kappa.has(x.id))) continue;
+    const handed = done.has(x.id);
     x.needs.forEach((n, i) => {
       // «Любой из нескольких» — отдельная карточка на каждую такую цель
       const key = n.items.length > 1 ? `q:${x.id}:${i}` : `q:${n.items[0]}:${n.fir ? 1 : 0}`;
-      if (!map.has(key)) map.set(key, { key, items: n.items, fir: n.fir, text: n.text, total: 0, uses: [] });
+      if (!map.has(key)) map.set(key, { key, items: n.items, fir: n.fir, text: n.text, total: 0, auto: 0, uses: [] });
       const e = map.get(key);
       e.total += n.count;
+      if (handed) e.auto += n.count;
       e.uses.push({
-        name: x.name, count: n.count, kappa: chain.kappa.has(x.id),
+        name: x.name, count: n.count, kappa: chain.kappa.has(x.id), handed,
         note: [n.plant && 'заложить', n.optional && 'необязательно'].filter(Boolean).join(', '),
       });
     });
@@ -44,7 +47,7 @@ function hideoutEntries() {
       if (built.has(`${s.id}-${lv.level}`)) continue;
       for (const n of lv.needs) {
         const key = `h:${n.item}:${n.fir ? 1 : 0}`;
-        if (!map.has(key)) map.set(key, { key, items: [n.item], fir: n.fir, text: null, total: 0, uses: [] });
+        if (!map.has(key)) map.set(key, { key, items: [n.item], fir: n.fir, text: null, total: 0, auto: 0, uses: [] });
         const e = map.get(key);
         e.total += n.count;
         e.uses.push({ name: `${s.name}, ур. ${lv.level}`, count: n.count, kappa: false, note: '' });
@@ -54,8 +57,11 @@ function hideoutEntries() {
   return [...map.values()];
 }
 
+// Собрано: сданное по выполненным квестам плюс отмеченное вручную (found — только для ещё не сданного)
+const collected = e => Math.min(e.total, e.auto + (found[e.key] ?? 0));
+
 function cardHtml(e) {
-  const have = Math.min(found[e.key] ?? 0, e.total);
+  const have = collected(e);
   const complete = have >= e.total;
   const first = ITEMS[e.items[0]];
   const icon = first?.icon
@@ -69,8 +75,8 @@ function cardHtml(e) {
   const fir = e.fir
     ? '<span class="tag fir">Найдено в рейде</span>'
     : '<span class="tag">Можно не из рейда</span>';
-  const uses = e.uses.map(u => `<li>${esc(u.name)} — ${u.count} шт.${u.note ? ` (${u.note})` : ''}${
-    u.kappa ? ' <span class="tag kappa">Каппа</span>' : ''}</li>`).join('');
+  const uses = e.uses.map(u => `<li${u.handed ? ' class="handed"' : ''}>${esc(u.name)} — ${u.count} шт.${
+    u.note ? ` (${u.note})` : ''}${u.handed ? ' · сдано' : ''}${u.kappa ? ' <span class="tag kappa">Каппа</span>' : ''}</li>`).join('');
   return `<li class="item-card${complete ? ' complete' : ''}" data-key="${esc(e.key)}">
     <div class="item-side">
       <div class="item-icon">${icon}</div>
@@ -108,10 +114,10 @@ function render() {
   const q = norm(state.query.trim());
   const shown = entries
     .filter(e => !q || e.items.some(i => norm(itemName(i)).includes(q)) || (e.text && norm(e.text).includes(q)))
-    .map(e => ({ e, complete: (found[e.key] ?? 0) >= e.total, title: e.text ?? itemName(e.items[0]) }))
+    .map(e => ({ e, complete: collected(e) >= e.total, title: e.text ?? itemName(e.items[0]) }))
     .sort((a, b) => a.complete - b.complete || a.title.localeCompare(b.title, 'ru'));
 
-  const completeCount = entries.filter(e => (found[e.key] ?? 0) >= e.total).length;
+  const completeCount = entries.filter(e => collected(e) >= e.total).length;
   $('progress').innerHTML = `${MODES[state.mode]}: собрано <b>${completeCount}</b> из ${entries.length}`;
   $('items').innerHTML = shown.length
     ? shown.map(s => cardHtml(s.e)).join('')
@@ -124,7 +130,9 @@ $('items').addEventListener('click', e => {
   if (!b) return;
   const key = b.closest('.item-card').dataset.key;
   const entry = entries.find(x => x.key === key);
-  const next = Math.min(entry.total, Math.max(0, Math.min(found[key] ?? 0, entry.total) + Number(b.dataset.step)));
+  // Вручную отмечается только то, что ещё не сдано по выполненным квестам
+  const open = entry.total - entry.auto;
+  const next = Math.min(open, Math.max(0, Math.min(found[key] ?? 0, open) + Number(b.dataset.step)));
   if (next) found[key] = next; else delete found[key];
   save(FOUND_KEY(state.mode), found);
   render();
