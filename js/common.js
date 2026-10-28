@@ -217,7 +217,7 @@ function openReset(main) {
   dialog.showModal();
 }
 
-// Переключатели режима, фракции и Каппы в шапке. onChange вызывается после смены
+// Переключатели режима и фракции (в боковом меню) и Каппы (в шапке страницы). onChange вызывается после смены
 function bindSwitches(onChange) {
   const sync = () => {
     document.querySelectorAll('.mode button').forEach(b => b.classList.toggle('on', b.dataset.mode === state.mode));

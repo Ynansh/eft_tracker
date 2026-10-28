@@ -3,51 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Квесты Таркова</title>
+  <title>Квесты — Tarkov трекер</title>
+  <!-- Тема до отрисовки страницы, чтобы она не мигала при загрузке -->
+  <script>try { document.documentElement.dataset.theme = JSON.parse(localStorage.getItem('eft-theme')) || 'dark'; } catch (e) { document.documentElement.dataset.theme = 'dark'; }</script>
   <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
-  <header class="top">
-    <h1>Квесты Таркова</h1>
-    <a class="nav" href="items.html">Предметы →</a>
-    <input id="search" type="search" placeholder="Поиск по квестам…" autocomplete="off">
-    <div class="seg mode" role="group" aria-label="Режим игры">
-      <button type="button" data-mode="pvp">PvP</button>
-      <button type="button" data-mode="pve">PvE</button>
-      <button type="button" data-mode="season">Сезон</button>
-    </div>
-    <div class="seg faction" role="group" aria-label="Фракция">
-      <button type="button" data-faction="USEC">USEC</button>
-      <button type="button" data-faction="BEAR">BEAR</button>
-    </div>
-    <div class="seg focus" role="group" aria-label="Фильтр Каппы">
-      <button type="button" data-kappa="0">Все квесты</button>
-      <button type="button" data-kappa="1">Только Каппа</button>
-    </div>
-    <div id="progress" class="progress"></div>
-    <button id="reset" type="button" class="reset">Сброс</button>
-  </header>
-
-  <details class="profile" open>
-    <summary id="profileSummary">Уровень и лояльность</summary>
-    <div id="profileFields" class="profile-fields"></div>
-  </details>
-
-  <nav id="tabs" class="tabs"></nav>
-
-  <main>
-    <p id="hint" class="hint" hidden></p>
-    <div id="groups"></div>
-  </main>
-
-  <footer id="done" class="done">
-    <button id="doneToggle" type="button" class="done-bar"></button>
-    <ul id="doneList" class="list done-list"></ul>
-  </footer>
-
+<body data-page="quests">
+  <aside id="sidebar" class="sidebar"></aside>
+  <div class="scrim"></div>
+  <div class="page">
+    <header class="page-head">
+      <div class="page-title">
+        <h1 id="pageTitle">Квесты</h1>
+        <div id="progress" class="progress"></div>
+      </div>
+      <div class="page-tools">
+        <input id="search" type="search" placeholder="Поиск по квестам…" autocomplete="off" aria-label="Поиск по квестам">
+        <div class="seg focus" role="group" aria-label="Фильтр Каппы">
+          <button type="button" data-kappa="0">Все</button>
+          <button type="button" data-kappa="1">Каппа</button>
+        </div>
+        <button id="reset" type="button" class="reset">Сброс</button>
+      </div>
+    </header>
+    <nav id="tabs" class="tabs" aria-label="Торговцы"></nav>
+    <main class="content">
+      <p id="hint" class="hint" hidden></p>
+      <div id="groups"></div>
+    </main>
+  </div>
   <script src="data/quests.js"></script>
   <script src="data/story.js"></script>
   <script src="js/common.js"></script>
+  <script src="js/shell.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

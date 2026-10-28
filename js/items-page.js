@@ -162,7 +162,7 @@ document.querySelector('.kind').addEventListener('click', e => {
   render();
 });
 
-bindSwitches(() => {
+initShell(() => {
   found = load(FOUND_KEY(state.mode), {});
   built = new Set(load(BUILT_KEY(state.mode), []));
   renderStations();

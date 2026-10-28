@@ -1,10 +1,10 @@
 // Страница квестов. Общая логика — в common.js
 Object.assign(state, {
   trader: load('eft-trader', TRADERS[0].id),
-  doneOpen: load('eft-done-open', false),
-  // Свёрнуты ли группы «Доступные», «Заблокированные» и «Возможно, есть в сезоне»
-  groups: { open: true, locked: true, maybe: true, ...load('eft-groups', {}) },
+  // Открыты ли группы «Доступные», «Заблокированные», «Возможно, есть в сезоне» и «Выполненные»
+  groups: { open: true, locked: true, maybe: true, done: false, ...load('eft-groups', {}) },
   query: '',
+  flash: null, // квест, отметку которого только что поменяли, — подсвечивается
 });
 
 const STORY_TAB = 'story'; // вкладка «Сюжет» рядом с торговцами
@@ -17,16 +17,6 @@ const inScope = x => exists(x) && (!state.kappaOnly || chain.kappa.has(x.id));
 function visible() {
   const q = norm(state.query.trim());
   return QUESTS.filter(x => inScope(x) && (q ? norm(x.name).includes(q) : x.trader === state.trader));
-}
-
-function renderProfile() {
-  const ll = LL_TRADERS.map(t => `<label>${esc(t.name)}
-      <select data-ll="${t.id}">${[1, 2, 3, 4].map(n =>
-        `<option ${(profile.ll[t.id] ?? 1) === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label>`).join('');
-  const rep = REP_TRADERS.map(t => `<label>${esc(t.name)}, реп.
-      <input type="number" step="0.01" data-rep="${t.id}" value="${profile.rep[t.id] ?? 0}"></label>`).join('');
-  $('profileFields').innerHTML = `<label>Уровень
-      <input type="number" min="1" max="79" data-level value="${profile.level}"></label>${ll}${rep}`;
 }
 
 function questHtml(x, showTrader) {
@@ -53,7 +43,8 @@ function questHtml(x, showTrader) {
     ? `<img class="thumb" src="${x.image}" alt="" loading="lazy" onerror="imgMissing(this)">`
     : '<div class="thumb"></div>';
   const title = locked ? 'Квест пока недоступен' : isDone ? 'Вернуть в список' : 'Выполнено';
-  return `<li class="quest${locked ? ' locked' : ''}" data-id="${x.id}">
+  const cls = [locked && 'locked', isDone && 'finished', state.flash === x.id && 'flash'].filter(Boolean).join(' ');
+  return `<li class="quest ${cls}" data-id="${x.id}">
     <input type="checkbox" ${isDone ? 'checked' : ''} ${locked ? 'disabled' : ''} title="${title}">
     ${thumb}
     <a class="name" href="quest.html?id=${x.id}">${esc(x.name)}</a>
@@ -64,7 +55,7 @@ function questHtml(x, showTrader) {
 
 function groupHtml(key, title, list, searching) {
   return `<details class="group" data-group="${key}" ${state.groups[key] ? 'open' : ''}>
-    <summary>${title} <small>${list.length}</small></summary>
+    <summary><span class="chev"></span>${title}<small>${list.length}</small></summary>
     <ul class="list">${list.map(x => questHtml(x, searching)).join('')}</ul>
   </details>`;
 }
@@ -75,7 +66,7 @@ function chapterHtml(c) {
   const missing = isDone ? [] : chapterMissing(c);
   const steps = c.steps.filter(s => s.id);
   const n = steps.filter(s => stepDone(s.id)).length;
-  return `<li class="quest chapter${missing.length ? ' locked' : ''}${isDone ? ' finished' : ''}" data-chapter="${c.id}">
+  return `<li class="quest chapter${missing.length ? ' locked' : ''}${isDone ? ' finished' : ''}${state.flash === c.id ? ' flash' : ''}" data-chapter="${c.id}">
     <input type="checkbox" ${isDone ? 'checked' : ''} ${missing.length ? 'disabled' : ''}
       title="${missing.length ? 'Глава пока недоступна' : isDone ? 'Снять отметку' : 'Глава пройдена'}">
     <div class="thumb chapter-num">${c.order}</div>
@@ -118,7 +109,9 @@ function render() {
   const total = pool.filter(x => done.has(x.id)).length;
   $('progress').innerHTML = `${MODES[state.mode]}, ${state.kappaOnly ? 'Каппа' : 'всего'}: <b>${total}</b> из ${pool.length}`;
 
-  $('profileSummary').textContent = `Уровень и лояльность (${MODES[state.mode]}): ур. ${profile.level}`;
+  $('pageTitle').textContent = storyTab ? 'Сюжет' : 'Квесты';
+  document.title = `${storyTab ? 'Сюжет' : 'Квесты'} — Tarkov трекер`;
+  shell.setActive(storyTab ? 'story' : 'quests');
 
   $('hint').hidden = !searching;
   $('hint').textContent = `Поиск по всем торговцам: найдено ${items.length}`;
@@ -127,20 +120,27 @@ function render() {
     $('groups').innerHTML = `<p class="hint">Главы истории. Шаги отмечаются на странице главы.
       «Тур» открывает торговцев: пока нужный шаг не отмечен, их квесты закрыты.</p>
       <ul class="list">${STORY.map(chapterHtml).join('')}</ul>`;
+  } else if (!items.length) {
+    $('groups').innerHTML = '<p class="empty">Ничего не найдено</p>';
   } else {
-    $('groups').innerHTML = todo.length
-      ? [available.length && groupHtml('open', 'Доступные', available, searching),
-         locked.length && groupHtml('locked', 'Заблокированные', locked, searching),
-         maybe.length && groupHtml('maybe', 'Возможно, есть в сезоне', maybe, searching)].filter(Boolean).join('')
-      : `<p class="empty">${items.length ? 'Всё выполнено 👍' : 'Ничего не найдено'}</p>`;
+    // Выполненные — последней группой, по умолчанию свёрнуты
+    $('groups').innerHTML = (todo.length ? '' : '<p class="empty">Всё выполнено 👍</p>') +
+      [available.length && groupHtml('open', 'Доступные', available, searching),
+       locked.length && groupHtml('locked', 'Заблокированные', locked, searching),
+       maybe.length && groupHtml('maybe', 'Возможно, есть в сезоне', maybe, searching),
+       finished.length && groupHtml('done', 'Выполненные', finished, searching)].filter(Boolean).join('');
   }
-  $('done').hidden = storyTab;
+  state.flash = null;
+}
 
-  $('done').classList.toggle('open', state.doneOpen);
-  document.body.classList.toggle('done-open', state.doneOpen);
-  $('doneToggle').innerHTML = `${state.doneOpen ? '▾' : '▴'} Выполнено: <b>${finished.length}</b>` +
-    (searching ? ' (по поиску)' : ` у торговца ${esc(traderName[state.trader])}`);
-  $('doneList').innerHTML = finished.map(x => questHtml(x, searching)).join('');
+// Переключение вкладки: торговец или «Сюжет»
+function openTab(id) {
+  state.trader = id;
+  state.query = '';
+  $('search').value = '';
+  if (id !== STORY_TAB) save('eft-last-trader', id);
+  save('eft-trader', state.trader);
+  render();
 }
 
 // Галочка «выполнено» у квеста или «пройдена» у главы
@@ -150,14 +150,15 @@ function onCheck(e) {
   if (row.dataset.chapter) {
     e.target.checked ? story.chapters.add(row.dataset.chapter) : story.chapters.delete(row.dataset.chapter);
     saveStory();
+    state.flash = row.dataset.chapter;
   } else {
     e.target.checked ? done.add(row.dataset.id) : uncheck(row.dataset.id);
     save(DONE_KEY[state.mode], [...done]);
+    state.flash = row.dataset.id;
   }
   render();
 }
 $('groups').addEventListener('change', onCheck);
-$('doneList').addEventListener('change', onCheck);
 
 // Свернуть/развернуть группу (toggle не всплывает, поэтому ловим на погружении)
 $('groups').addEventListener('toggle', e => {
@@ -169,43 +170,28 @@ $('groups').addEventListener('toggle', e => {
 
 $('tabs').addEventListener('click', e => {
   const b = e.target.closest('button[data-trader]');
-  if (!b) return;
-  state.trader = b.dataset.trader;
-  state.query = '';
-  $('search').value = '';
-  save('eft-trader', state.trader);
-  render();
+  if (b) openTab(b.dataset.trader);
 });
 
-// Изменения уровня, лояльности и репутации
-$('profileFields').addEventListener('change', e => {
-  const t = e.target;
-  if (t.dataset.level !== undefined) profile.level = Math.max(1, parseInt(t.value, 10) || 1);
-  else if (t.dataset.ll) profile.ll[t.dataset.ll] = parseInt(t.value, 10);
-  else if (t.dataset.rep) profile.rep[t.dataset.rep] = parseFloat(t.value) || 0;
-  else return;
-  save(PROFILE_KEY(state.mode), profile);
-  render();
-});
+// Пункты меню «Квесты» и «Сюжет» на этой же странице — без перезагрузки
+const lastTrader = () => {
+  const t = load('eft-last-trader', TRADERS[0].id);
+  return traderName[t] ? t : TRADERS[0].id;
+};
+shell.onSamePage = id => openTab(id === 'story' ? STORY_TAB : (state.trader === STORY_TAB ? lastTrader() : state.trader));
 
-bindSwitches(() => {
-  renderProfile();
-  render();
-});
+initShell(render);
 
 $('search').addEventListener('input', e => {
   state.query = e.target.value;
   render();
 });
 
-$('doneToggle').addEventListener('click', () => {
-  state.doneOpen = !state.doneOpen;
-  save('eft-done-open', state.doneOpen);
-  render();
-});
-
 $('reset').addEventListener('click', () => openReset(state.trader === STORY_TAB ? 'story' : 'quests'));
 
+// Раздел из адреса: index.html?tab=story или ?tab=quests (ссылки из меню)
+const tab = new URLSearchParams(location.search).get('tab');
+if (tab === 'story') state.trader = STORY_TAB;
+else if (tab === 'quests' && state.trader === STORY_TAB) state.trader = lastTrader();
 if (!traderName[state.trader] && state.trader !== STORY_TAB) state.trader = TRADERS[0].id;
-renderProfile();
 render();

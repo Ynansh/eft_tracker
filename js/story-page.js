@@ -17,7 +17,7 @@ function render() {
     $('chapter').innerHTML = '<p class="empty">Глава не найдена. <a href="index.html">К списку квестов</a></p>';
     return;
   }
-  document.title = `${chapter.name} — Квесты Таркова`;
+  document.title = `${chapter.name} — Tarkov трекер`;
   $('progress').textContent = MODES[state.mode];
 
   const isDone = chapterDone(chapter.id);
@@ -78,4 +78,5 @@ $('chapter').addEventListener('change', e => {
   render();
 });
 
+initShell(render);
 render();

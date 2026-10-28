@@ -19,7 +19,7 @@ function render() {
     $('quest').innerHTML = '<p class="empty">Квест не найден. <a href="index.html">К списку квестов</a></p>';
     return;
   }
-  document.title = `${quest.name} — Квесты Таркова`;
+  document.title = `${quest.name} — Tarkov трекер`;
   $('progress').textContent = MODES[state.mode];
 
   const isDone = done.has(quest.id);
@@ -124,4 +124,5 @@ $('quest').addEventListener('change', e => {
   render();
 });
 
+initShell(render);
 render();
