@@ -9,8 +9,6 @@ const icon = id => ITEMS[id]?.icon ? `<img src="${ITEMS[id].icon}" alt="" loadin
 const itemName = id => ITEMS[id]?.name ?? id;
 const questLink = id => `<a href="quest.html?id=${id}">${esc(byId[id].name)}</a>`;
 const dateRu = iso => iso.slice(0, 10).split('-').reverse().join('.');
-// Копия скриншота tarkov.help на диске (get_th_screenshots.py) — под тем же именем, что в адресе
-const thFile = url => 'img/th/' + decodeURIComponent(url.split('/').pop());
 
 const section = (title, body) => body ? `<section><h2>${title}</h2>${body}</section>` : '';
 

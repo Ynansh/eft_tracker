@@ -69,7 +69,8 @@ function chapterHtml(c) {
   return `<li class="quest chapter${missing.length ? ' locked' : ''}${isDone ? ' finished' : ''}${state.flash === c.id ? ' flash' : ''}" data-chapter="${c.id}">
     <input type="checkbox" ${isDone ? 'checked' : ''} ${missing.length ? 'disabled' : ''}
       title="${missing.length ? 'Глава пока недоступна' : isDone ? 'Снять отметку' : 'Глава пройдена'}">
-    <div class="thumb chapter-num">${c.order}</div>
+    ${c.cover ? `<div class="thumb chapter-thumb">${thImg(c.cover, '')}<span class="chapter-num">${c.order}</span></div>`
+      : `<div class="thumb chapter-num">${c.order}</div>`}
     <a class="name" href="story.html?id=${c.id}">${esc(c.name)}</a>
     <div class="meta"><span>шагов ${n} из ${steps.length}</span></div>
     ${missing.length ? `<div class="locked-by">🔒 Сначала: ${missing.map(id => esc(chapterById[id].name)).join(', ')}</div>` : ''}

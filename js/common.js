@@ -296,6 +296,41 @@ function imgMissing(img, text) {
   img.replaceWith(box);
 }
 
+// Копия картинки tarkov.help на диске (scripts/get_th_screenshots.py) — под тем же именем, что в адресе
+const thFile = url => 'img/th/' + decodeURIComponent(url.split('/').pop());
+
+// Картинка tarkov.help: сначала из папки, если её там нет — с сайта, если нет и там — пустое место
+const thImg = (url, cls) => `<img class="${cls}" src="${esc(encodeURI(thFile(url)))}" data-remote="${esc(encodeURI(url))}"
+  alt="" loading="lazy" referrerpolicy="no-referrer" onerror="imgFallback(this)">`;
+function imgFallback(img) {
+  const remote = img.dataset.remote;
+  if (!remote) return imgMissing(img);
+  delete img.dataset.remote;
+  img.src = remote;
+}
+
+// Подтверждение в окне страницы. Возвращает true, если нажали кнопку действия
+function askConfirm(title, text, okLabel) {
+  const dialog = document.createElement('dialog');
+  dialog.className = 'reset-dialog';
+  dialog.innerHTML = `<h2>${esc(title)}</h2><p>${esc(text)}</p>
+    <div class="dialog-buttons"><button type="button" value="cancel">Отмена</button>
+      <button type="button" value="ok" class="danger">${esc(okLabel)}</button></div>`;
+  document.body.append(dialog);
+  return new Promise(resolve => {
+    // Ответ отдаём сразу из кнопок и Esc, не дожидаясь события close (оно приходит асинхронно)
+    const finish = ok => {
+      if (!dialog.isConnected) return;
+      dialog.close();
+      dialog.remove();
+      resolve(ok);
+    };
+    dialog.querySelectorAll('button').forEach(b => b.addEventListener('click', () => finish(b.value === 'ok')));
+    dialog.addEventListener('cancel', e => { e.preventDefault(); finish(false); });
+    dialog.showModal();
+  });
+}
+
 // Скриншота нет в папке — пробуем взять его с сайта источника, а если и там нет — убираем
 function shotFallback(img) {
   const remote = img.dataset.remote;

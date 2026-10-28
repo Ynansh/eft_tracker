@@ -1,5 +1,6 @@
-// Каркас всех страниц: боковое меню (разделы, режим, фракция, профиль), выезжающее меню на телефоне,
-// сворачивание меню до иконок и плавные переходы между страницами. Общая логика — в common.js
+// Каркас всех страниц: боковое меню (разделы, режим, фракция, тема, профиль, копия прогресса в файл),
+// выезжающее меню на телефоне, сворачивание меню до иконок и плавные переходы между страницами.
+// Общая логика — в common.js
 const ICONS = {
   logo: '<circle cx="12" cy="12" r="8"/><path d="M12 2v5M12 17v5M2 12h5M17 12h5"/><circle cx="12" cy="12" r="1.4"/>',
   quests: '<path d="M10 6h10M10 12h10M10 18h10"/><path d="M3.5 6l1.6 1.6L8 4.8M3.5 12l1.6 1.6L8 10.8M3.5 18l1.6 1.6L8 16.8"/>',
@@ -10,6 +11,8 @@ const ICONS = {
   user: '<circle cx="12" cy="8" r="3.5"/><path d="M5 20c1.2-3.6 3.8-5.5 7-5.5s5.8 1.9 7 5.5"/>',
   moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
   sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6l1.4 1.4M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/>',
+  save: '<path d="M12 4v11M7.5 10.5 12 15l4.5-4.5"/><path d="M5 19h14"/>',
+  open: '<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5"/><path d="M5 19h14"/>',
 };
 const svgIcon = name => `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name]}</svg>`;
 
@@ -38,6 +41,66 @@ function renderProfile() {
       <input type="number" min="1" max="79" data-level value="${profile.level}"></label>
     <div class="profile-sub">Лояльность торговцев</div>${ll}${rep}`;
   $('profileSummary').textContent = `ур. ${profile.level}`;
+}
+
+// Копия прогресса в файл: все ключи трекера (eft-…) из хранилища браузера. Нужна, чтобы отметки
+// пережили очистку браузера или переустановку: файл лежит где угодно на компьютере
+const BACKUP_APP = 'eft-tracker';
+const BACKUP_DATE_KEY = 'eft-last-backup';
+const dateTimeRu = iso => new Date(iso).toLocaleString('ru-RU', { dateStyle: 'short', timeStyle: 'short' });
+
+function progressKeys() {
+  const keys = [];
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k.startsWith('eft-') && k !== BACKUP_DATE_KEY) keys.push(k);
+    }
+  } catch {}
+  return keys.sort();
+}
+
+function renderBackupInfo(error) {
+  const box = $('backupInfo');
+  const last = load(BACKUP_DATE_KEY, null);
+  box.classList.toggle('error', !!error);
+  box.textContent = error || (last ? `Последнее сохранение: ${dateTimeRu(last)}`
+    : 'Отметки хранятся в браузере. Сохрани копию в файл, чтобы не потерять их при очистке.');
+}
+
+function saveBackup() {
+  const now = new Date().toISOString();
+  const data = Object.fromEntries(progressKeys().map(k => [k, load(k, null)]));
+  const blob = new Blob([JSON.stringify({ app: BACKUP_APP, version: 1, saved: now, data }, null, 1)],
+    { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `eft-tracker-progress-${now.slice(0, 10)}.json`;
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  save(BACKUP_DATE_KEY, now);
+  renderBackupInfo();
+}
+
+async function loadBackup(file) {
+  let backup;
+  try {
+    backup = JSON.parse(await file.text());
+  } catch {
+    return renderBackupInfo('Не получилось прочитать файл: это не файл прогресса трекера.');
+  }
+  if (backup?.app !== BACKUP_APP || !backup.data || typeof backup.data !== 'object') {
+    return renderBackupInfo('Это не файл прогресса трекера. Выбери файл eft-tracker-progress-….json.');
+  }
+  const when = backup.saved ? ` от ${dateTimeRu(backup.saved)}` : '';
+  if (!await askConfirm('Загрузить прогресс из файла?',
+    `Файл${when}. Все отметки в этом браузере заменятся отметками из файла.`, 'Загрузить')) return;
+  progressKeys().forEach(k => localStorage.removeItem(k));
+  for (const [k, v] of Object.entries(backup.data)) if (k.startsWith('eft-')) save(k, v);
+  if (backup.saved) save(BACKUP_DATE_KEY, backup.saved);
+  location.reload();
 }
 
 function initShell(onChange) {
@@ -72,6 +135,13 @@ function initShell(onChange) {
         <summary>${svgIcon('user')}<span>Профиль</span><small id="profileSummary"></small></summary>
         <div id="profileFields" class="profile-fields"></div>
       </details>
+      <div class="side-label">Прогресс</div>
+      <div class="backup">
+        <button type="button" id="backupSave">${svgIcon('save')}Сохранить в файл</button>
+        <button type="button" id="backupLoad">${svgIcon('open')}Загрузить из файла</button>
+        <input type="file" id="backupFile" accept=".json,application/json" hidden>
+        <small id="backupInfo"></small>
+      </div>
     </div>
     <button type="button" class="collapse-btn" id="collapseBtn" title="Свернуть меню">${svgIcon('collapse')}<span>Свернуть</span></button>`;
 
@@ -108,6 +178,16 @@ function initShell(onChange) {
     setTimeout(() => document.documentElement.classList.remove('theme-anim'), 400);
   });
   syncTheme();
+
+  // Копия прогресса в файл
+  $('backupSave').addEventListener('click', saveBackup);
+  $('backupLoad').addEventListener('click', () => $('backupFile').click());
+  $('backupFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    e.target.value = ''; // чтобы тот же файл можно было выбрать ещё раз
+    if (file) loadBackup(file);
+  });
+  renderBackupInfo();
 
   renderProfile();
   bindSwitches(() => {

@@ -1,0 +1,16 @@
+{
+ "source": "https://tarkov.help/ru/trader/storyteller/quests",
+ "collected": "2026-10-28",
+ "chapters": {
+  "Тур": {"slug": "tur", "image": "https://minio.tarkov.help/production/img/articles/phpjWwiyj.png"},
+  "Небеса в огне": {"slug": "nebesa-v-ogne", "image": "https://minio.tarkov.help/production/img/articles/php3NKopk.png"},
+  "Они уже здесь": {"slug": "oni-uje-zdes", "image": "https://minio.tarkov.help/production/img/articles/phpwlvJzr.png"},
+  "Батя": {"slug": "batya", "image": "https://minio.tarkov.help/production/img/articles/phpUclYK4.png"},
+  "Случайный свидетель": {"slug": "sluchainiy-svidetel", "image": "https://minio.tarkov.help/production/img/articles/phpRaW1eQ.png"},
+  "Синий огонь": {"slug": "siniy-ogon", "image": "https://minio.tarkov.help/production/img/articles/phpK2Ia3y.png"},
+  "Неизвестные": {"slug": "neizvestnye", "image": "https://minio.tarkov.help/production/img/articles/phprbEAtH.png"},
+  "Лабиринт": {"slug": "labirint", "image": "https://minio.tarkov.help/production/img/articles/phptNZJkP.png"},
+  "Билет": {"slug": "bilet", "image": "https://minio.tarkov.help/production/img/articles/phpE8rYBp.png"},
+  "Борей": {"slug": "borey", "image": "https://minio.tarkov.help/production/img/articles/2390e907-0c04-4631-90a0-6c49dfe0ea5c.png"}
+ }
+}
