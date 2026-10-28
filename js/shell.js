@@ -207,10 +207,10 @@ function initShell(onChange) {
     onChange();
   });
 
-  // Разделы «Квесты» и «Сюжет» на странице квестов переключаются на месте
+  // Разделы «Квесты» и «Сюжет» на странице квестов переключаются на месте; остальные — обычный переход
   $('sidebar').addEventListener('click', e => {
     const a = e.target.closest('.side-nav a');
-    if (!a || !shell.onSamePage || page === 'items') return;
+    if (!a || !shell.onSamePage || !['quests', 'story'].includes(a.dataset.nav)) return;
     e.preventDefault();
     shell.onSamePage(a.dataset.nav);
     closeNav();
