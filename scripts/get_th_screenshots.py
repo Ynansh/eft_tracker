@@ -1,6 +1,6 @@
 # Скачивает скриншоты прохождений с tarkov.help в папку img/th, чтобы страница квеста
 # показывала их без интернета и не зависела от сайта. Список картинок — tarkov_help.json.
-# Уже скачанные пропускаются, поэтому скрипт можно запускать повторно. Запуск: python3 get_th_screenshots.py
+# Уже скачанные пропускаются, поэтому скрипт можно запускать повторно. Запуск из папки трекера: python3 scripts/get_th_screenshots.py
 import json
 import sys
 import threading
@@ -17,8 +17,8 @@ for stream in (sys.stdout, sys.stderr):
     if hasattr(stream, "reconfigure"):
         stream.reconfigure(errors="replace")
 
-HERE = Path(__file__).parent
-DEST = HERE / "img" / "th"
+ROOT = Path(__file__).resolve().parent.parent  # корень трекера: скрипт лежит в scripts/
+DEST = ROOT / "img" / "th"
 # Скриншоты из статей. Иконки предметов, торговцев и значки лояльности не берём — это не скриншоты
 SHOTS = "/production/img/articles/"
 # Чужой сайт: качаем в несколько потоков, но немного
@@ -31,7 +31,7 @@ def local_name(url):
 
 
 def main():
-    data = json.loads((HERE / "tarkov_help.json").read_text(encoding="utf-8"))
+    data = json.loads((ROOT / "sources" / "tarkov_help.json").read_text(encoding="utf-8"))
     urls = sorted({u for q in data["quests"].values() for u in q["images"] if SHOTS in u})
     DEST.mkdir(parents=True, exist_ok=True)
     todo = [u for u in urls if not (DEST / local_name(u)).exists()]

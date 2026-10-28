@@ -1,15 +1,12 @@
 .DS_Store
 __pycache__/
 
-# Скачивает update_quests.py
-img/*.webp
+# Скачивает scripts/update_quests.py
+img/items/
 img/quests/
 
-# Собирает update_quests.py
-quests.js
-items.js
-story.js
-guides.js
+# Собирает scripts/update_quests.py
+data/
 
-# Архивы для релиза (make_release.py)
+# Архивы для релиза (scripts/make_release.py)
 release/

@@ -20,6 +20,26 @@
 2. Открыть [терминал в папке проекта](#как-открыть-терминал-в-папке-трекера) и один раз выполнить «Скачать или обновить данные» из таблицы [«Команды»](#команды) (около 30 МБ).
 3. Открыть `index.html` двойным кликом или через Live Server в VS Code.
 
+## Что где лежит
+
+```
+eft-tracker/
+├─ index.html      — квесты (открывать этот файл)
+├─ items.html      — предметы для квестов и убежища
+├─ quest.html      — страница одного квеста
+├─ story.html      — глава сюжета
+├─ css/            — оформление
+├─ js/             — логика страниц
+├─ data/           — данные для страниц (создаёт scripts/update_quests.py)
+├─ sources/        — данные, собранные вручную: связи, Каппа, прохождения
+├─ scripts/        — Python-скрипты: обновление данных, скриншоты, релизы
+└─ img/
+   ├─ quests/      — картинки квестов (скачивает update_quests.py)
+   ├─ items/       — иконки предметов (скачивает update_quests.py)
+   ├─ wiki/        — скриншоты с вики
+   └─ th/          — скриншоты с tarkov.help
+```
+
 ## Python
 
 | Как получен трекер | Нужен ли Python |
@@ -94,15 +114,15 @@ python --version
 
 ### Команды
 
-Команды одинаковые для PowerShell и cmd. Колонка зависит от того, как установлен Python.
+Команды одинаковые для PowerShell и cmd, запускать их нужно из папки трекера (не из `scripts`). Колонка зависит от того, как установлен Python.
 
 | Что сделать | Windows: python.org, winget | Windows: Store, Scoop, Chocolatey | macOS / Linux |
 |---|---|---|---|
-| Докачать скриншоты (lite) | `py get_screenshots.py` | `python get_screenshots.py` | `python3 get_screenshots.py` |
-| Скачать скриншоты tarkov.help (≈425 МБ) | `py get_th_screenshots.py` | `python get_th_screenshots.py` | `python3 get_th_screenshots.py` |
-| Скачать или обновить данные | `py update_quests.py` | `python update_quests.py` | `python3 update_quests.py` |
+| Докачать скриншоты (lite) | `py scripts/get_screenshots.py` | `python scripts/get_screenshots.py` | `python3 scripts/get_screenshots.py` |
+| Скачать скриншоты tarkov.help (≈425 МБ) | `py scripts/get_th_screenshots.py` | `python scripts/get_th_screenshots.py` | `python3 scripts/get_th_screenshots.py` |
+| Скачать или обновить данные | `py scripts/update_quests.py` | `python scripts/update_quests.py` | `python3 scripts/update_quests.py` |
 | Локальный сервер (по желанию), затем открыть http://localhost:5500 | `py -m http.server 5500` | `python -m http.server 5500` | `python3 -m http.server 5500` |
-| Собрать архивы релиза | `py make_release.py` | `python make_release.py` | `python3 make_release.py` |
+| Собрать архивы релиза | `py scripts/make_release.py` | `python scripts/make_release.py` | `python3 scripts/make_release.py` |
 
 Если Python ставили с python.org с галочкой «Add python.exe to PATH», работают обе команды — и `py`, и `python`.
 
@@ -110,10 +130,10 @@ python --version
 
 - **`py : The term 'py' is not recognized…`** (PowerShell) или **`"py" не является внутренней или внешней командой…`** (cmd) — Python не установлен или поставлен без команды `py` (Store, Scoop, Chocolatey). Установи Python или используй `python`. После установки перезапусти терминал.
 - **`python` открывает Microsoft Store или пишет `Python was not found`** — Python не установлен, это заглушка Windows. Установи Python любым способом выше. Заглушку можно отключить: «Параметры» → «Приложения» → «Дополнительные параметры приложений» → «Псевдонимы выполнения приложений».
-- **`can't open file '…get_screenshots.py': No such file or directory`** — терминал открыт не в той папке. Перейди в папку трекера (см. выше).
+- **`can't open file '…scripts/get_screenshots.py': No such file or directory`** — терминал открыт не в той папке. Перейди в папку трекера (см. выше) — в ней должны быть `index.html` и папка `scripts`.
 - **`WinError 10060`, `timed out` или в конце «Не скачано картинок: … не отвечает assets.tarkov.dev»** — сервер картинок tarkov.dev не отвечает (у некоторых провайдеров он не открывается). Данные при этом собраны, трекер работает, вместо недостающих картинок — пустые места. Запусти скрипт ещё раз позже или через VPN: докачаются только недостающие. Либо возьми готовый архив со страницы релизов — там всё уже есть.
 - **macOS: `CERTIFICATE_VERIFY_FAILED`** — запусти «Install Certificates.command» из папки «Программы» → «Python 3.x».
-- **`get_screenshots.py`: «Не получилось скачать (404)»** — репозиторий стал приватным. Скачай архив `full` со страницы релизов.
+- **`scripts/get_screenshots.py`: «Не получилось скачать (404)»** — репозиторий стал приватным. Скачай архив `full` со страницы релизов.
 
 ## Что есть
 
@@ -129,20 +149,20 @@ python --version
 
 ## Обновление данных
 
-`update_quests.py` скачивает свежие данные tarkov.dev, недостающие иконки и фото квестов, добавляет связи из `tarkov_market.json` и пересобирает `quests.js`, `items.js`, `story.js`, `guides.js`. Эти файлы и картинки (кроме `img/wiki/`) в репозитории не хранятся — их создаёт скрипт, поэтому его нужно запустить перед первым запуском и повторять после патчей игры.
+`scripts/update_quests.py` скачивает свежие данные tarkov.dev, недостающие иконки и фото квестов, добавляет данные из папки `sources/` и пересобирает файлы в `data/`. Папка `data/` и картинки `img/items/`, `img/quests/` в репозитории не хранятся — их создаёт скрипт, поэтому его нужно запустить перед первым запуском и повторять после патчей игры.
 
-Прохождения, сюжет, сезонные квесты и скриншоты с вики (`wiki_*.json`, `img/wiki/`) собираются вручную через браузер: вики закрыта проверкой Cloudflare. Так же вручную собраны связи с tarkov-market (`tarkov_market.json`) и адреса страниц и скриншотов tarkov.help (`tarkov_help.json`). Свои прохождения лежат в `guides_own.json`.
+Прохождения, сюжет, сезонные квесты и скриншоты с вики (`sources/wiki_*.json`, `img/wiki/`) собираются вручную через браузер: вики закрыта проверкой Cloudflare. Так же вручную собраны связи с tarkov-market (`sources/tarkov_market.json`) и адреса страниц и скриншотов tarkov.help (`sources/tarkov_help.json`). Свои прохождения лежат в `sources/guides_own.json`.
 
-Архивы для релиза собирает `make_release.py` в папку `release/` — после обновления данных.
+Архивы для релиза собирает `scripts/make_release.py` в папку `release/` — после обновления данных.
 
 ## Источники и лицензии
 
 - Данные квестов, предметов и убежища, иконки и изображения квестов — [tarkov.dev](https://tarkov.dev). Игровые материалы © Battlestate Games.
-- Прохождения, сюжетные главы, сезонные квесты и скриншоты — [Escape from Tarkov Wiki (ru)](https://escapefromtarkov.fandom.com/ru), лицензия [CC BY-NC-SA](https://creativecommons.org/licenses/by-nc-sa/3.0/). На каждой странице указан источник. Эти материалы (`wiki_*.json`, `guides.js`, `story.js`, `img/wiki/`) распространяются на тех же условиях: только некоммерческое использование с указанием авторства.
+- Прохождения, сюжетные главы, сезонные квесты и скриншоты — [Escape from Tarkov Wiki (ru)](https://escapefromtarkov.fandom.com/ru), лицензия [CC BY-NC-SA](https://creativecommons.org/licenses/by-nc-sa/3.0/). На каждой странице указан источник. Эти материалы (`sources/wiki_*.json`, `data/guides.js`, `data/story.js`, `img/wiki/`) распространяются на тех же условиях: только некоммерческое использование с указанием авторства.
 - Связи между квестами («что выполнить раньше») и 13 квестов, которых нет на tarkov.dev (цепочка «На свет» и другие), — [tarkov-market](https://tarkov-market.com/progression/quests-interactive) (только названия и связи). Связи сверены с [tarkov.help](https://tarkov.help/ru).
 - Список квестов для Каппы — голосование четырёх источников: [tarkov-market](https://tarkov-market.com/progression/quests-interactive) (233 квеста), [tarkov.help](https://tarkov.help/ru) (128), игровые данные tarkov.dev (13) и раздел «Requirements» страницы «Collector» английской вики (11). Квест попадает в Каппу, если его отмечают хотя бы два из них.
 - Ещё 31 недостающий квест — [eft.su](https://eft.su/quests) (только названия).
-- Скриншоты прохождений и ссылки на гайды — [tarkov.help](https://tarkov.help/ru). Копия скриншотов лежит в `img/th/` (её скачивает `get_th_screenshots.py`); если файла нет, страница квеста берёт скриншот прямо с tarkov.help.
-- Свои прохождения (`guides_own.json`) написаны по игровым данным tarkov.dev, вики и tarkov.help своими словами.
+- Скриншоты прохождений и ссылки на гайды — [tarkov.help](https://tarkov.help/ru). Копия скриншотов лежит в `img/th/` (её скачивает `scripts/get_th_screenshots.py`); если файла нет, страница квеста берёт скриншот прямо с tarkov.help.
+- Свои прохождения (`sources/guides_own.json`) написаны по игровым данным tarkov.dev, вики и tarkov.help своими словами.
 
 Проект неофициальный и некоммерческий, не связан с Battlestate Games.

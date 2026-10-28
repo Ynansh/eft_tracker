@@ -1,6 +1,6 @@
 # Докачивает скриншоты прохождений (папка img/wiki) для лёгкого архива трекера.
 # Скриншоты берутся из репозитория на GitHub: с самой вики скрипты скачивать нельзя.
-# Работает, пока репозиторий публичный. Запуск: python3 get_screenshots.py
+# Работает, пока репозиторий публичный. Запуск из папки трекера: python3 scripts/get_screenshots.py
 import re
 import shutil
 import sys
@@ -24,8 +24,8 @@ URL = f"https://codeload.github.com/{REPO}/zip/refs/heads/{BRANCH}"
 # Примерный размер архива репозитория: GitHub не сообщает его заранее, а полоске нужен ориентир
 APPROX_SIZE = 72 * 1024 * 1024
 
-HERE = Path(__file__).parent
-DEST = HERE / "img" / "wiki"
+ROOT = Path(__file__).resolve().parent.parent  # корень трекера: скрипт лежит в scripts/
+DEST = ROOT / "img" / "wiki"
 SHOT = re.compile(r"[^/]+/img/wiki/([0-9a-f]{16}\.webp)")  # <папка репозитория>/img/wiki/<имя>.webp
 
 

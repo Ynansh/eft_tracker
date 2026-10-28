@@ -1,9 +1,9 @@
 # Собирает два архива для релиза на GitHub в папку release/:
 #   eft-tracker-full-<дата>.zip — всё готовое к запуску, со скриншотами вики и tarkov.help
 #   eft-tracker-lite-<дата>.zip — то же без скриншотов (img/wiki и img/th);
-#     скриншоты потом можно докачать: python3 get_screenshots.py и python3 get_th_screenshots.py
-# Перед сборкой обнови данные: python3 update_quests.py
-# Запуск: python3 make_release.py
+#     скриншоты потом можно докачать: python3 scripts/get_screenshots.py и python3 scripts/get_th_screenshots.py
+# Перед сборкой обнови данные: python3 scripts/update_quests.py
+# Запуск из папки трекера: python3 scripts/make_release.py
 import datetime
 import sys
 import zipfile
@@ -14,7 +14,7 @@ for _stream in (sys.stdout, sys.stderr):
     if hasattr(_stream, "reconfigure"):
         _stream.reconfigure(errors="replace")
 
-HERE = Path(__file__).parent
+HERE = Path(__file__).resolve().parent.parent  # корень трекера: скрипт лежит в scripts/
 OUT = HERE / "release"
 ROOT = "eft-tracker"  # папка внутри архива
 
@@ -22,7 +22,7 @@ ROOT = "eft-tracker"  # папка внутри архива
 SKIP_DIRS = {".git", "release", "__pycache__", ".claude"}
 SKIP_FILES = {".DS_Store", ".gitignore"}
 # Без этих файлов сайт не работает — их создаёт update_quests.py
-REQUIRED = ["quests.js", "items.js", "story.js", "guides.js", "img/quests"]
+REQUIRED = ["data/quests.js", "data/items.js", "data/story.js", "data/guides.js", "img/quests"]
 
 
 def project_files():
@@ -44,7 +44,7 @@ def build(name, files):
 
 missing = [r for r in REQUIRED if not (HERE / r).exists()]
 if missing:
-    raise SystemExit(f"Нет {', '.join(missing)} — сначала запусти python3 update_quests.py")
+    raise SystemExit(f"Нет {', '.join(missing)} — сначала запусти python3 scripts/update_quests.py")
 
 OUT.mkdir(exist_ok=True)
 stamp = datetime.date.today().isoformat()

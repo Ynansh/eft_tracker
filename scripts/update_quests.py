@@ -1,10 +1,11 @@
-# Скачивает свежий список квестов с tarkov.dev (на русском) и пишет его в quests.js.
+# Скачивает свежий список квестов с tarkov.dev (на русском) и пишет его в data/quests.js.
+# Собранные вручную данные (связи, Каппа, прохождения вики) лежат в папке sources/.
 # Квесты из extra_quests.json (взяты с eft.su) добавляются, если их ещё нет на tarkov.dev.
 # Связи «предыдущий квест» и квесты, которых нет на tarkov.dev, — tarkov_market.json (с tarkov-market).
 # Для квестов, которых нет на tarkov-market, — связи tarkov.dev. Каппа — квесты, которые отмечают хотя бы
 # два источника из четырёх: tarkov-market, tarkov.help, игровые данные tarkov.dev и вики (страница «Collector»).
-# Предметы для квестов и убежища пишутся в items.js, их иконки — в папку img/.
-# Запуск: python3 update_quests.py
+# Предметы для квестов и убежища пишутся в data/items.js, их иконки — в папку img/items/.
+# Запуск из папки трекера: python3 scripts/update_quests.py
 import hashlib
 import json
 import re
@@ -24,8 +25,10 @@ for _stream in (sys.stdout, sys.stderr):
         _stream.reconfigure(errors="replace")
 
 BASE = "https://json.tarkov.dev/"
-HERE = Path(__file__).parent
-IMG = HERE / "img"
+ROOT = Path(__file__).resolve().parent.parent  # корень трекера: скрипт лежит в scripts/
+SRC = ROOT / "sources"  # данные, собранные вручную
+DATA = ROOT / "data"  # что читают страницы трекера
+IMG = ROOT / "img"
 
 # Деньги в списке предметов не нужны: счётчик на сотни тысяч рублей бесполезен
 CURRENCIES = {
@@ -163,7 +166,7 @@ for i in dict.fromkeys(i for tasks in tasks_by_mode.values() for i in tasks):
     quests.append(convert(tasks_by_mode[modes[0]][i], modes))
 
 known = {q["id"] for q in quests}
-extra = json.loads((HERE / "extra_quests.json").read_text(encoding="utf-8"))
+extra = json.loads((SRC / "extra_quests.json").read_text(encoding="utf-8"))
 added = 0
 for e in extra:
     if e["id"] in known:
@@ -194,7 +197,7 @@ for e in extra:
 WIKI_URL = "https://escapefromtarkov.fandom.com/ru/wiki/"
 GENITIVE = {"Прапора": "Прапор", "Терапевта": "Терапевт", "Скупщика": "Скупщик", "Лыжника": "Лыжник",
             "Миротворца": "Миротворец", "Механика": "Механик", "Барахольщика": "Барахольщик", "Егеря": "Егерь"}
-wiki_ss = json.loads((HERE / "wiki_story_season.json").read_text(encoding="utf-8"))
+wiki_ss = json.loads((SRC / "wiki_story_season.json").read_text(encoding="utf-8"))
 story_id = {s["title"]: f"story-{s['pageid']}" for s in wiki_ss["story"]}
 season_id = {s["title"]: f"wiki-{s['pageid']}" for s in wiki_ss["season"]}
 season_guides = {}
@@ -217,7 +220,7 @@ def strip_table_headers(entry):
             for b in entry[part]:
                 if b.get("text", "").startswith(TABLE_HEADERS):
                     continue
-                if b["t"] == "img" and not (HERE / b["file"]).exists():
+                if b["t"] == "img" and not (ROOT / b["file"]).exists():
                     missing_shots.add(b["file"])
                     continue
                 kept.append(b)
@@ -335,8 +338,8 @@ def tm_key(title):
     return re.sub(r"[^a-z0-9]+", "-", title).strip("-")
 
 
-tm = json.loads((HERE / "tarkov_market.json").read_text(encoding="utf-8"))
-wiki_tm = json.loads((HERE / "wiki_tm_quests.json").read_text(encoding="utf-8"))["pages"]
+tm = json.loads((SRC / "tarkov_market.json").read_text(encoding="utf-8"))
+wiki_tm = json.loads((SRC / "wiki_tm_quests.json").read_text(encoding="utf-8"))["pages"]
 # Ключ → квесты у нас. Их бывает несколько: версии для BEAR и USEC или варианты одного квеста
 # в разных ветках (у Водителя БТР), которые tarkov-market показывает одним квестом
 ours = {}
@@ -500,7 +503,7 @@ def name_key(name):
 
 # Страницы квестов на tarkov.help (tarkov_help.json собран вручную в браузере): ссылка на гайд и скриншоты.
 # Скриншоты страница берёт из папки img/th (её заполняет get_th_screenshots.py), а если файла нет — с tarkov.help
-th_path = HERE / "tarkov_help.json"
+th_path = SRC / "tarkov_help.json"
 th_quests = json.loads(th_path.read_text(encoding="utf-8"))["quests"] if th_path.exists() else {}
 th_by_key = {}
 for slug, t in th_quests.items():
@@ -598,7 +601,8 @@ def fetch_all(title, step, jobs):
 
 # Картинки квестов
 (IMG / "quests").mkdir(parents=True, exist_ok=True)
-fetch_all("Фото квестов", "2/3", [(q["imageUrl"], HERE / q["image"]) for q in quests if q["image"]])
+(IMG / "items").mkdir(parents=True, exist_ok=True)
+fetch_all("Фото квестов", "2/3", [(q["imageUrl"], ROOT / q["image"]) for q in quests if q["image"]])
 for q in quests:
     del q["imageUrl"]
 
@@ -606,7 +610,8 @@ trader_ids = {q["trader"] for q in quests}
 order = [i for i in TRADER_ORDER if i in trader_ids] + sorted(trader_ids - set(TRADER_ORDER))
 traders = [{"id": i, "name": traders_ru.get(f"{i} Nickname", i)} for i in order]
 
-(HERE / "quests.js").write_text(
+DATA.mkdir(exist_ok=True)
+(DATA / "quests.js").write_text(
     "// Сгенерировано update_quests.py из данных tarkov.dev, tarkov-market и extra_quests.json. Не редактировать вручную.\n"
     f"window.TRADERS = {json.dumps(traders, ensure_ascii=False)};\n"
     f"window.QUESTS = {json.dumps(quests, ensure_ascii=False, separators=(',', ':'))};\n",
@@ -651,13 +656,13 @@ for i in sorted(used):
     item_info[i] = {
         "name": items_ru.get(f"{i} Name", i),
         "short": items_ru.get(f"{i} ShortName", ""),
-        "icon": f"img/{i}.webp" if i in with_icon and it.get("iconLink") else None,
+        "icon": f"img/items/{i}.webp" if i in with_icon and it.get("iconLink") else None,
     }
 
 fetch_all("Иконки предметов", "3/3",
-          [(items[i]["iconLink"], IMG / f"{i}.webp") for i, v in item_info.items() if v["icon"]])
+          [(items[i]["iconLink"], IMG / "items" / f"{i}.webp") for i, v in item_info.items() if v["icon"]])
 
-(HERE / "items.js").write_text(
+(DATA / "items.js").write_text(
     "// Сгенерировано update_quests.py из данных tarkov.dev. Не редактировать вручную.\n"
     f"window.ITEMS = {json.dumps(item_info, ensure_ascii=False, separators=(',', ':'))};\n"
     f"window.HIDEOUT = {json.dumps(stations_by_mode, ensure_ascii=False, separators=(',', ':'))};\n",
@@ -665,7 +670,7 @@ fetch_all("Иконки предметов", "3/3",
 )
 print(f"Предметы: {len(item_info)}, модулей убежища: {len(stations_by_mode['pvp'])}")
 
-(HERE / "story.js").write_text(
+(DATA / "story.js").write_text(
     "// Сюжетные главы с https://escapefromtarkov.fandom.com/ru (CC BY-NC-SA). Сгенерировано update_quests.py.\n"
     f"window.STORY = {json.dumps(story, ensure_ascii=False, separators=(',', ':'))};\n"
     f"window.TRADER_UNLOCKS = {json.dumps(trader_unlocks, ensure_ascii=False, separators=(',', ':'))};\n",
@@ -676,7 +681,7 @@ print(f"Сюжетных глав: {len(story)}, шагов: {sum(1 for c in sto
 
 # Прохождения с русской вики (CC BY-NC-SA). wiki_guides.json собирается вручную в браузере:
 # вики закрыта проверкой Cloudflare, поэтому скрипт её не скачивает
-guides_path = HERE / "wiki_guides.json"
+guides_path = SRC / "wiki_guides.json"
 if guides_path.exists():
     guides = {**json.loads(guides_path.read_text(encoding="utf-8")), **season_guides, **tm_guides}
     for g in guides.values():
@@ -685,14 +690,14 @@ if guides_path.exists():
         guides.setdefault(qid, {})["thShots"] = urls
     # Свои прохождения (guides_own.json): короткий пересказ по игровым данным, вики и tarkov.help.
     # Показываются первыми, текст с вики под ними сворачивается
-    own_path = HERE / "guides_own.json"
+    own_path = SRC / "guides_own.json"
     own = json.loads(own_path.read_text(encoding="utf-8")) if own_path.exists() else {}
     for qid, g in own.items():
         if qid in by_id:
             guides.setdefault(qid, {})["own"] = g
         else:
             print(f"Внимание: в guides_own.json неизвестный квест {qid}")
-    (HERE / "guides.js").write_text(
+    (DATA / "guides.js").write_text(
         "// Прохождения с https://escapefromtarkov.fandom.com/ru (CC BY-NC-SA). Сгенерировано update_quests.py.\n"
         f"window.GUIDES = {json.dumps(guides, ensure_ascii=False, separators=(',', ':'))};\n",
         encoding="utf-8",
