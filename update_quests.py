@@ -1,8 +1,8 @@
 # Скачивает свежий список квестов с tarkov.dev (на русском) и пишет его в quests.js.
 # Квесты из extra_quests.json (взяты с eft.su) добавляются, если их ещё нет на tarkov.dev.
 # Связи «предыдущий квест» и квесты, которых нет на tarkov.dev, — tarkov_market.json (с tarkov-market).
-# Для квестов, которых нет на tarkov-market, — связи tarkov.dev. Список Каппы — отметки tarkov.help
-# (tarkov_help.json) и «Коллекционер» с его цепочкой из игровых данных tarkov.dev.
+# Для квестов, которых нет на tarkov-market, — связи tarkov.dev. Каппа — квесты, которые отмечают хотя бы
+# два источника из четырёх: tarkov-market, tarkov.help, игровые данные tarkov.dev и вики (страница «Collector»).
 # Предметы для квестов и убежища пишутся в items.js, их иконки — в папку img/.
 # Запуск: python3 update_quests.py
 import hashlib
@@ -373,7 +373,7 @@ for e in tm:
         "trader": TM_TRADERS[e["trader"]],
         "level": next((int(r.split()[1]) for r in e["require"] if r.startswith("Level ")), 1),
         "map": page.get("map"),
-        "kappa": False,  # Каппа — по tarkov.help, ниже
+        "kappa": False,  # Каппа — по tarkov-market, ниже
         "faction": None,
         "wiki": WIKI_URL + page["title"],
         "objectives": block_texts(page.get("steps")),
@@ -458,6 +458,9 @@ for e in tm:
 
 # Квесты PvP, которых нет на tarkov-market: возможно, устарели или убраны из игры
 tm_matched = {i for ids in tm_ids.values() for i in ids}
+
+# Отметки Каппы tarkov-market; итоговая метка — ниже, голосованием источников
+tm_kappa = {i for e in tm if e["kappa"] for i in tm_ids.get(e["name"], [])}
 for q in quests:
     if "pvp" in q["modes"] and q["id"] not in tm_matched:
         q["notOnTM"] = True
@@ -511,16 +514,31 @@ for q in quests:
     slug = next(filter(None, (th_by_key.get((key, f)) for f in (q["faction"], None, "USEC", "BEAR"))), None)
     if slug:
         q["th"] = slug
-        # Каппа: отметка tarkov.help «Требуется для Коллекционера» (вдобавок к отметке tarkov.dev)
-        q["kappa"] = q["kappa"] or th_quests[slug].get("kappa", False)
         # Только скриншоты из статей: иконки предметов и торговцев в галерее не нужны
         shots = [u for u in th_quests[slug]["images"] if "/production/img/articles/" in u]
         if shots:
             th_shots[q["id"]] = shots
-th_linked = {q.get("th") for q in quests}
-lost = [t["name"] for s, t in th_quests.items() if t.get("kappa") and s not in th_linked]
-if lost:
-    print(f"Внимание: квесты Каппы с tarkov.help, которых нет у нас: {', '.join(lost)}")
+
+# Каппа: квест нужен, если его отмечают хотя бы два источника из четырёх.
+# Вики: раздел «Requirements» страницы «Collector» — эти квесты, их предыдущие части и сам «Коллекционер»
+WIKI_COLLECTOR = {"Chemical - Part 3", "Sew it Good - Part 2", "Shooter Born in Heaven", "The Tarkov Shooter - Part 4"}
+pvp_tasks = tasks_by_mode["pvp"]
+page = lambda t: urllib.parse.unquote((t.get("wikiLink") or "").rsplit("/", 1)[-1]).replace("_", " ")
+wiki_kappa, stack = set(), [i for i, t in pvp_tasks.items() if page(t) in WIKI_COLLECTOR]
+while stack:
+    i = stack.pop()
+    if i not in wiki_kappa and i in pvp_tasks:
+        wiki_kappa.add(i)
+        stack += [r["task"] for r in pvp_tasks[i].get("taskRequirements", [])]
+wiki_kappa |= {i for i, t in pvp_tasks.items() if page(t) == "Collector"}
+for q in quests:
+    votes = [
+        q["id"] in tm_kappa,                                      # tarkov-market
+        bool(q.get("th")) and th_quests[q["th"]].get("kappa", False),  # tarkov.help
+        q["kappa"],                                               # игровые данные tarkov.dev
+        q["id"] in wiki_kappa,                                    # вики
+    ]
+    q["kappa"] = sum(votes) >= 2
 
 quests.sort(key=lambda q: (q["level"], q["name"]))
 
